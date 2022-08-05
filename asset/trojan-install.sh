@@ -7,8 +7,11 @@ TYPE=0
 
 INSTALL_VERSION=""
 
+# 使用[[ ... ]]条件判断结构，而不是[ ... ]，能够防止脚本中的许多逻辑错误。比如!=、>、<等
+# shell命令$#表示参数个数
 while [[ $# > 0 ]];do
     KEY="$1"
+    # 等同于Switch语句，;;等同于break
     case $KEY in
         -v|--version)
         INSTALL_VERSION="$2"
@@ -22,7 +25,7 @@ while [[ $# > 0 ]];do
                 # unknown option
         ;;
     esac
-    shift # past argument or value
+    shift # 销毁第一个参数
 done
 #############################
 
@@ -36,11 +39,16 @@ function prompt() {
     done
 }
 
+# id -u命令获取uid（用户id），用于判断是否是root权限
 if [[ $(id -u) != 0 ]]; then
     echo Please run this script as root.
     exit 1
 fi
 
+# linux命令uname用于显示系统信息，-m参数用于显示电脑类型
+# 2>表示错误输出
+# /dev/null 可以理解为一个"无底洞"，等价于只写文件，
+# 2> /dev/null 即表示不显示任何错误信息
 ARCH=$(uname -m 2> /dev/null)
 if [[ $ARCH != x86_64 && $ARCH != aarch64 ]];then
     echo "not support $ARCH machine".
@@ -56,7 +64,9 @@ if [[ $TYPE == 0 ]];then
 else
     CHECKVERSION="https://api.github.com/repos/p4gefau1t/trojan-go/releases"
 fi
+# 定义变量NAME
 NAME=trojan
+# if语句中参数-z表示：-z string  string长度为0则为真
 if [[ -z $INSTALL_VERSION ]];then
     VERSION=$(curl -H 'Cache-Control: no-cache' -s "$CHECKVERSION" | grep 'tag_name' | cut -d\" -f4 | sed 's/v//g' | head -n 1)
 else
@@ -66,6 +76,7 @@ else
     fi
     VERSION=`echo "$INSTALL_VERSION"|sed 's/v//g'`
 fi
+#拼接出下载文件的url
 if [[ $TYPE == 0 ]];then
     TARBALL="$NAME-$VERSION-linux-amd64.tar.xz"
     DOWNLOADURL="https://github.com/trojan-gfw/$NAME/releases/download/v$VERSION/$TARBALL"
@@ -74,6 +85,7 @@ else
     DOWNLOADURL="https://github.com/p4gefau1t/trojan-go/releases/download/v$VERSION/$TARBALL"
 fi
 
+# Linux命令mktemp用于建立暂存文件,-d参数表示创建一个目录而非文件
 TMPDIR="$(mktemp -d)"
 INSTALLPREFIX="/usr/bin/$NAME"
 SYSTEMDPREFIX=/etc/systemd/system
