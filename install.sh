@@ -15,9 +15,11 @@ VERSION_CHECK="https://api.github.com/repos/Jrohy/trojan/releases/latest"
 
 SERVICE_URL="https://raw.githubusercontent.com/Jrohy/trojan/master/asset/trojan-web.service"
 
+# -e filename表示如果filename存在则为真
+# &&逻辑与，前面的命令返回真才会执行后面的命令
 [[ -e /var/lib/trojan-manager ]] && UPDATE=1
 
-#Centos 临时取消别名
+#Centos 临时取消别名 -a参数删除全部别名
 [[ -f /etc/redhat-release && -z $(echo $SHELL|grep zsh) ]] && unalias -a
 
 [[ -z $(echo $SHELL|grep zsh) ]] && SHELL_WAY="bash" || SHELL_WAY="zsh"
@@ -29,11 +31,14 @@ YELLOW="33m"
 BLUE="36m"
 FUCHSIA="35m"
 
+# colorEcho param1 "string"调用，表示以param1颜色echo字符串string
 colorEcho(){
     COLOR=$1
+    # -e开启转义
     echo -e "\033[${COLOR}${@:2}\033[0m"
 }
 
+# 获取参数
 #######get params#########
 while [[ $# > 0 ]];do
     KEY="$1"
@@ -93,6 +98,8 @@ checkSys() {
         exit 1
     fi
 
+# Linux命令用于执行一个简单命令或者显示命令相关信息，-v参数不执行命令，打印描述
+# 用于判断Linux是哪一种软件包管理器
     if [[ `command -v apt-get` ]];then
         PACKAGE_MANAGER='apt-get'
     elif [[ `command -v dnf` ]];then
@@ -114,11 +121,13 @@ installDependent(){
         ${PACKAGE_MANAGER} install socat crontabs bash-completion -y
     else
         ${PACKAGE_MANAGER} update
-        ${PACKAGE_MANAGER} install socat cron bash-completion xz-utils -y
+        ${PACKAGE_MANAGER} install socat cron bash-completion xz-utils -y  # -y参数不询问，直接安装
     fi
 }
 
 setupCron() {
+    # Linux命令crontab用于定时执行的命令
+    # -l参数列出当前的时程表
     if [[ `crontab -l 2>/dev/null|grep acme` ]]; then
         if [[ -z `crontab -l 2>/dev/null|grep trojan-web` || `crontab -l 2>/dev/null|grep trojan-web|grep "&"` ]]; then
             #计算北京时间早上3点时VPS的实际时间
@@ -139,10 +148,15 @@ setupCron() {
             rm -f crontab.txt
         fi
     fi
+    # 定时执行任务格式
+    # f1 f2 f3 f4 f5 program
+    # 其中 f1 是表示分钟，f2 表示小时，f3 表示一个月份中的第几日，f4 表示月份，f5 表示一个星期中的第几天。program 表示要执行的程序。
 }
 
 installTrojan(){
     local SHOW_TIP=0
+    # 2>&1 表示将标准错误重定向到标准输出中
+    # Linux命令systemctl用于管理系统服务
     if [[ $UPDATE == 1 ]];then
         systemctl stop trojan-web >/dev/null 2>&1
         rm -f /usr/local/bin/trojan
@@ -150,12 +164,17 @@ installTrojan(){
     LASTEST_VERSION=$(curl -H 'Cache-Control: no-cache' -s "$VERSION_CHECK" | grep 'tag_name' | cut -d\" -f4)
     echo "正在下载管理程序`colorEcho $BLUE $LASTEST_VERSION`版本..."
     [[ $ARCH == x86_64 ]] && BIN="trojan-linux-amd64" || BIN="trojan-linux-arm64" 
+    # curl命令-o参数表示将服务器回应保存为文件
     curl -L "$DOWNLAOD_URL/$LASTEST_VERSION/$BIN" -o /usr/local/bin/trojan
+    # Linux命令chmod用于控制用户对文件的权限
+    # +x表示增加执行权限
     chmod +x /usr/local/bin/trojan
     if [[ ! -e /etc/systemd/system/trojan-web.service ]];then
         SHOW_TIP=1
         curl -L $SERVICE_URL -o /etc/systemd/system/trojan-web.service
+        # daemon-reload表示用于重新加载某个服务的配置文件
         systemctl daemon-reload
+        # enable用于设置开机自动启动
         systemctl enable trojan-web
     fi
     #命令补全环境变量
@@ -190,4 +209,5 @@ main(){
     installTrojan
 }
 
+# 执行main函数
 main
