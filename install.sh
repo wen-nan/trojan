@@ -143,6 +143,7 @@ setupCron() {
                 LOCAL_TIME=$[$LOCAL_TIME-24]
             fi
             crontab -l 2>/dev/null|sed '/acme.sh/d' > crontab.txt
+            # "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh"命令用于更新证书
             echo "0 ${LOCAL_TIME}"' * * * systemctl stop trojan-web; "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" > /dev/null; systemctl start trojan-web' >> crontab.txt
             crontab crontab.txt
             rm -f crontab.txt
